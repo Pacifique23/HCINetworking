@@ -1,4 +1,231 @@
-// NetworkVision AR Networking Glasses
+// Display profile card in AR overlay - positioned next to QR code
+function showProfile(profile) {
+    const overlayLeft = document.getElementById("overlayLeft");
+    const overlayRight = document.getElementById("overlayRight");
+
+    const profileCard = createProfileCard(profile);
+
+    // Position next to QR code if we have the position
+    const position = getQRBasedPosition();
+    Object.assign(profileCard.style, position);
+
+    // Add to both eye overlays
+    const leftCard = profileCard.cloneNode(true);
+    const rightCard = profileCard.cloneNode(true);
+    
+    overlayLeft.appendChild(leftCard);
+    overlayRight.appendChild(rightCard);
+
+    // Auto-remove after 6 seconds (shorter for VR experience)
+    setTimeout(() => {
+        [leftCard, rightCard].forEach(card => {
+            if (card && card.parentNode) {
+                card.style.transition = "all 0.4s ease-out";
+                card.style.opacity = "0";
+                card.style.transform = "scale(0.9) translateY(-10px)";
+                
+                setTimeout(() => {
+                    if (card.parentNode) {
+                        card.parentNode.removeChild(card);
+                    }
+                }, 400);
+            }
+        });
+    }, 6000);
+
+    // Haptic feedback if supported
+    if (navigator.vibrate) {
+        navigator.vibrate([30, 20, 30]);
+    }
+}
+
+// Smart positioning based on QR code location
+function getQRBasedPosition() {
+    if (!lastQRPosition) {
+        // Fallback to safe default position
+        return {
+            top: "20%",
+            right: "10%"
+        };
+    }
+
+    const overlay = document.getElementById("overlayLeft");
+    const overlayRect = overlay.getBoundingClientRect();
+    
+    // Convert QR canvas coordinates to overlay coordinates
+    const qrCenterX = (lastQRPosition.x + lastQRPosition.width / 2) / lastQRPosition.canvasWidth;
+    const qrCenterY = (lastQRPosition.y + lastQRPosition.height / 2) / lastQRPosition.canvasHeight;
+    
+    // Determine best position relative to QR code
+    let position = {};
+    
+    // Check if QR is in left half or right half
+    if (qrCenterX < 0.5) {
+        // QR is on left, put profile on right side
+        position.left = `${Math.min(qrCenterX * 100 + 25, 70)}%`;
+    } else {
+        // QR is on right, put profile on left side
+        position.right = `${Math.min((1 - qrCenterX) * 100 + 25, 70)}%`;
+    }
+    
+    // Vertical positioning - avoid extreme top/bottom
+    if (qrCenterY < 0.3) {
+        // QR is at top, put profile below
+        position.top = `${Math.max(qrCenterY * 100 + 15, 25)}%`;
+    } else if (qrCenterY > 0.7) {
+        // QR is at bottom, put profile above
+        position.bottom = `${Math.max((1 - qrCenterY) * 100 + 15, 25)}%`;
+    } else {
+        // QR is in middle, align vertically
+        position.top = `${Math.max(Math.min(qrCenterY * 100 - 10, 60), 20)}%`;
+    }
+    
+    return position;
+}
+
+// Enhanced QR scanning with better stability
+function startQRScanning() {
+    if (scanningInterval) {
+        clearInterval(scanningInterval);
+    }
+
+    console.log("🔍 Starting QR code scanning...");
+    updateScanStatus("Active");
+    isScanning = true;
+    
+    // Slower scan rate for better stability (3 FPS)
+    scanningInterval = setInterval(() => {
+        if (isScanning && cameraInitialized) {
+            try {
+                scanForQRCodes();
+                scanCount++;
+            } catch (error) {
+                console.error("❌ Scan error:", error);
+                // Don't stop scanning on errors, just log them
+            }
+        }
+    }, 333); // ~3 FPS for stability
+}
+
+function stopQRScanning() {
+    if (scanningInterval) {
+        clearInterval(scanningInterval);
+        scanningInterval = null;
+    }
+    isScanning = false;
+    updateScanStatus("Stopped");
+    console.log("⏹️ QR scanning stopped");
+}
+
+// Better resource cleanup
+function cleanupResources() {
+    console.log("🧹 Cleaning up resources...");
+    
+    stopQRScanning();
+    
+    if (stream) {
+        stream.getTracks().forEach(track => {
+            track.stop();
+            console.log(`🔇 Stopped ${track.kind} track`);
+        });
+        stream = null;
+    }
+    
+    cameraInitialized = false;
+    currentProfiles.clear();
+    lastQRPosition = null;
+}
+
+// Enhanced page visibility handling
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        console.log("📱 Page hidden, pausing scanning");
+        stopQRScanning();
+    } else {
+        console.log("📱 Page visible, resuming scanning");
+        if (cameraInitialized && !isScanning) {
+            setTimeout(() => {
+                startQRScanning();
+            }, 1000); // Delay to ensure stable resume
+        }
+    }
+});
+
+// Prevent accidental page unload
+window.addEventListener('beforeunload', (e) => {
+    if (preventHomeScreen && cameraInitialized) {
+        cleanupResources();
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to leave? Camera will be stopped.';
+        return e.returnValue;
+    }
+});
+
+// Handle orientation changes more gracefully
+window.addEventListener("orientationchange", () => {
+    console.log("📱 Orientation changed");
+    stopQRScanning();
+    
+    setTimeout(() => {
+        if (cameraInitialized) {
+            console.log("📱 Restarting scanning after orientation change");
+            startQRScanning();
+        }
+    }, 1500); // Longer delay for orientation changes
+});
+
+// Enhanced error handling for video streams
+function setupVideoErrorHandling() {
+    const videos = [document.getElementById("cameraLeft"), document.getElementById("cameraRight")];
+    
+    videos.forEach((video, index) => {
+        video.addEventListener('error', (e) => {
+            console.error(`❌ Video ${index} error:`, e);
+            updateCameraStatus("Error");
+            
+            // Try to recover after a delay
+            setTimeout(() => {
+                if (!cameraInitialized) {
+                    console.log("🔄 Attempting camera recovery...");
+                    initializeCamera();
+                }
+            }, 3000);
+        });
+        
+        video.addEventListener('stalled', () => {
+            console.warn(`⚠️ Video ${index} stalled`);
+        });
+        
+        video.addEventListener('suspend', () => {
+            console.warn(`⚠️ Video ${index} suspended`);
+        });
+    });
+}
+
+// Initialize error handling when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    setupVideoErrorHandling();
+});
+
+// Enhanced wake lock with retry logic
+async function requestWakeLock() {
+    try {
+        if ("wakeLock" in navigator) {
+            wakeLock = await navigator.wakeLock.request("screen");
+            console.log("💡 Screen wake lock acquired");
+            
+            wakeLock.addEventListener('release', () => {
+                console.log("💡 Wake lock released");
+                // Try to reacquire after a delay
+                setTimeout(requestWakeLock, 2000);
+            });
+        }
+    } catch (err) {
+        console.log("💡 Wake lock not available:", err.message);
+        // Retry in 5 seconds
+        setTimeout(requestWakeLock, 5000);
+    }
+}// NetworkVision AR Networking Glasses
 // Main JavaScript Application
 
 // Professional profiles database
@@ -75,6 +302,9 @@ let currentProfiles = new Set();
 let scanningInterval = null;
 let scanCount = 0;
 let lastScanTime = Date.now();
+let lastQRPosition = null; // Store last QR code position
+let cameraInitialized = false;
+let preventHomeScreen = false;
 
 // Function to easily add new profiles during testing
 function addTestProfile(id, profileData) {
@@ -82,7 +312,31 @@ function addTestProfile(id, profileData) {
         ...profileData,
         qrCode: id
     };
-    console.log(`Added profile: ${profileData.name} (QR: ${id})`);
+    console.log(`✅ Added profile: ${profileData.name} (QR: ${id})`);
+}
+
+// Prevent accidental navigation
+function preventNavigation() {
+    preventHomeScreen = true;
+    
+    // Prevent back button
+    window.addEventListener('popstate', (e) => {
+        if (preventHomeScreen) {
+            e.preventDefault();
+            window.history.pushState(null, null, window.location.href);
+        }
+    });
+    
+    // Prevent refresh and other navigation
+    window.addEventListener('beforeunload', (e) => {
+        if (preventHomeScreen) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    
+    // Add initial history state
+    window.history.pushState(null, null, window.location.href);
 }
 
 // Debug functions
@@ -99,7 +353,7 @@ function toggleDebug() {
 function testProfile() {
     // Test with the first profile for demonstration
     const testId = Object.keys(profiles)[0];
-    console.log(`Testing profile: ${testId}`);
+    console.log(`🧪 Testing profile: ${testId}`);
     handleQRDetection(testId);
     updateDebugPanel(`Manual test: ${testId}`);
     showNotification("Test profile displayed!", "success");
@@ -121,7 +375,10 @@ function updateDebugPanel(message = null) {
 
 // Main application startup
 async function startApp() {
-    console.log("Starting NetworkVision app...");
+    console.log("🚀 Starting NetworkVision app...");
+    
+    // Prevent navigation issues
+    preventNavigation();
     
     const startupScreen = document.getElementById("startupScreen");
     const vrContainer = document.getElementById("vrContainer");
@@ -136,21 +393,28 @@ async function startApp() {
     }, 800);
 }
 
-// Camera initialization
+// Camera initialization with better error handling
 async function initializeCamera() {
-    console.log("Initializing camera...");
+    if (cameraInitialized) {
+        console.log("📷 Camera already initialized");
+        return;
+    }
+    
+    console.log("📷 Initializing camera...");
     updateCameraStatus("Requesting...");
     
     try {
-        // Request camera with optimal settings for QR scanning
-        stream = await navigator.mediaDevices.getUserMedia({
+        // More specific camera constraints for better stability
+        const constraints = {
             video: {
-                facingMode: "environment",
-                width: { ideal: 1920, min: 640, max: 1920 },
-                height: { ideal: 1080, min: 480, max: 1080 },
-                frameRate: { ideal: 30, min: 15, max: 60 }
+                facingMode: { ideal: "environment" },
+                width: { ideal: 1280, min: 640, max: 1920 },
+                height: { ideal: 720, min: 480, max: 1080 },
+                frameRate: { ideal: 24, min: 15, max: 30 } // Lower frame rate for stability
             }
-        });
+        };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         const cameraLeft = document.getElementById("cameraLeft");
         const cameraRight = document.getElementById("cameraRight");
@@ -159,32 +423,48 @@ async function initializeCamera() {
         cameraLeft.srcObject = stream;
         cameraRight.srcObject = stream;
 
-        // Wait for video to be ready before starting QR scanning
-        cameraLeft.addEventListener('loadedmetadata', () => {
-            console.log(`📹 Camera ready: ${cameraLeft.videoWidth}x${cameraLeft.videoHeight}`);
-            updateCameraStatus("Active");
-            updateScanStatus("Starting...");
+        // Better event handling for video
+        const videoReadyPromise = new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("Video timeout")), 10000);
+            
+            cameraLeft.addEventListener('loadedmetadata', () => {
+                clearTimeout(timeout);
+                resolve();
+            }, { once: true });
+            
+            cameraLeft.addEventListener('error', (e) => {
+                clearTimeout(timeout);
+                reject(e);
+            }, { once: true });
+        });
+
+        await videoReadyPromise;
+
+        console.log(`📹 Camera ready: ${cameraLeft.videoWidth}x${cameraLeft.videoHeight}`);
+        updateCameraStatus("Active");
+        updateScanStatus("Starting...");
+        cameraInitialized = true;
+        
+        // Start scanning after short delay
+        setTimeout(() => {
             startQRScanning();
             showNotification("Camera activated successfully!", "success");
-        });
-
-        cameraLeft.addEventListener('error', (e) => {
-            console.error("Video error:", e);
-            updateCameraStatus("Error");
-            showError("Video stream error. Please refresh and try again.");
-        });
+        }, 1000);
 
     } catch (error) {
-        console.error("Camera access error:", error);
-        updateCameraStatus("Denied");
+        console.error("❌ Camera access error:", error);
+        updateCameraStatus("Error");
+        cameraInitialized = false;
         
-        let errorMessage = "Camera access denied. ";
+        let errorMessage = "Camera access failed. ";
         if (error.name === 'NotAllowedError') {
-            errorMessage += "Please allow camera permissions in your browser settings.";
+            errorMessage += "Please allow camera permissions and refresh.";
         } else if (error.name === 'NotFoundError') {
             errorMessage += "No camera found on this device.";
+        } else if (error.message.includes("timeout")) {
+            errorMessage += "Camera took too long to start. Please refresh.";
         } else {
-            errorMessage += "Please check your camera and try again.";
+            errorMessage += "Please check your camera and refresh.";
         }
         
         showError(errorMessage);
@@ -197,7 +477,7 @@ function startQRScanning() {
         clearInterval(scanningInterval);
     }
 
-    console.log("Starting QR code scanning...");
+    console.log("🔍 Starting QR code scanning...");
     updateScanStatus("Active");
     isScanning = true;
     
@@ -217,7 +497,7 @@ function stopQRScanning() {
     }
     isScanning = false;
     updateScanStatus("Stopped");
-    console.log("QR scanning stopped");
+    console.log("⏹️ QR scanning stopped");
 }
 
 function scanForQRCodes() {
@@ -246,7 +526,7 @@ function scanForQRCodes() {
         detectQRCode(imageData, canvas);
         
     } catch (error) {
-        console.error("Scanning error:", error);
+        console.error("❌ Scanning error:", error);
         updateDebugPanel(`Scan error: ${error.message}`);
     }
 }
@@ -259,8 +539,19 @@ function detectQRCode(imageData, canvas) {
         });
 
         if (code && code.data) {
-            console.log("jsQR detected:", code.data);
+            console.log("🎯 jsQR detected:", code.data);
             updateDebugPanel(`jsQR: ${code.data}`);
+            
+            // Store QR position for profile placement
+            lastQRPosition = {
+                x: code.location.topLeftCorner.x,
+                y: code.location.topLeftCorner.y,
+                width: Math.abs(code.location.topRightCorner.x - code.location.topLeftCorner.x),
+                height: Math.abs(code.location.bottomLeftCorner.y - code.location.topLeftCorner.y),
+                canvasWidth: canvas.width,
+                canvasHeight: canvas.height
+            };
+            
             handleQRDetection(code.data);
             return;
         }
@@ -276,6 +567,17 @@ function detectQRCode(imageData, canvas) {
         .then(result => {
             console.log("🎯 QrScanner detected:", result.data);
             updateDebugPanel(`QrScanner: ${result.data}`);
+            
+            // Store approximate position (QrScanner doesn't provide exact coordinates)
+            lastQRPosition = {
+                x: canvas.width * 0.3, // Approximate center-left
+                y: canvas.height * 0.3,
+                width: canvas.width * 0.4,
+                height: canvas.height * 0.4,
+                canvasWidth: canvas.width,
+                canvasHeight: canvas.height
+            };
+            
             handleQRDetection(result.data);
         })
         .catch(() => {
@@ -303,7 +605,7 @@ function handleQRDetection(qrData) {
 
         // Check if profile exists and isn't already displayed
         if (profiles[profileId] && !currentProfiles.has(profileId)) {
-            console.log("Showing profile for:", profiles[profileId].name);
+            console.log("✅ Showing profile for:", profiles[profileId].name);
             
             // Display the profile
             showProfile(profiles[profileId]);
@@ -325,7 +627,7 @@ function handleQRDetection(qrData) {
             }, 8000);
 
         } else if (!profiles[profileId]) {
-            console.log("No profile found for ID:", profileId);
+            console.log("❌ No profile found for ID:", profileId);
             updateDebugPanel(`Unknown: ${profileId}`);
             showNoProfileMessage(profileId);
         } else {
@@ -334,7 +636,7 @@ function handleQRDetection(qrData) {
         }
 
     } catch (error) {
-        console.error("Error in handleQRDetection:", error);
+        console.error("❌ Error in handleQRDetection:", error);
         showNotification("Error processing QR code", "error");
     }
 }
@@ -525,7 +827,7 @@ function adjustColor(hex, percent) {
 
 // Error handling and user messages
 function showError(message) {
-    console.error("Error:", message);
+    console.error("❌ Error:", message);
     
     const errorDiv = document.createElement("div");
     errorDiv.className = "error-message";
@@ -550,7 +852,7 @@ function showError(message) {
 
 function showNoProfileMessage(profileId) {
     const message = `Profile not found: ${profileId}`;
-    console.log("Error", message);
+    console.log("❌", message);
     
     showNotification(message, "error");
     
@@ -627,20 +929,19 @@ function updateScanStatus(status) {
 
 // Device orientation and lifecycle management
 window.addEventListener("orientationchange", () => {
-    console.log("Orientation changed, reloading...");
+    console.log("📱 Orientation changed, reloading...");
     setTimeout(() => location.reload(), 500);
 });
 
 // Prevent device sleep during usage
-let wakeLock = null;
 async function requestWakeLock() {
     try {
         if ("wakeLock" in navigator) {
             wakeLock = await navigator.wakeLock.request("screen");
-            console.log("Screen wake lock acquired");
+            console.log("💡 Screen wake lock acquired");
         }
     } catch (err) {
-        console.log("Wake lock not available:", err);
+        console.log("💡 Wake lock not available:", err);
     }
 }
 
@@ -699,6 +1000,25 @@ document.head.appendChild(rippleStyle);
 // Initialize wake lock and start the app
 requestWakeLock();
 
+// Enhanced app initialization
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("🎯 NetworkVision DOM loaded");
+    setupVideoErrorHandling();
+    
+    // Preload QR detection libraries
+    if (typeof jsQR === 'undefined') {
+        console.log("📚 jsQR library not loaded");
+    } else {
+        console.log("✅ jsQR library ready");
+    }
+    
+    if (typeof QrScanner === 'undefined') {
+        console.log("📚 QrScanner library not loaded");
+    } else {
+        console.log("✅ QrScanner library ready");
+    }
+});
+
 // Demo mode for testing (uncomment to enable)
 /*
 function startDemoMode() {
@@ -708,18 +1028,28 @@ function startDemoMode() {
     console.log("🎭 Starting demo mode...");
     setInterval(() => {
         if (demoIndex < profileIds.length) {
+            // Simulate QR position for demo
+            lastQRPosition = {
+                x: Math.random() * 200,
+                y: Math.random() * 200,
+                width: 100,
+                height: 100,
+                canvasWidth: 640,
+                canvasHeight: 480
+            };
             handleQRDetection(profileIds[demoIndex]);
             demoIndex++;
         } else {
             demoIndex = 0;
         }
-    }, 4000);
+    }, 5000);
 }
 
 // Uncomment to start demo mode after 3 seconds
 // setTimeout(startDemoMode, 3000);
 */
 
-console.log("NetworkVision app loaded successfully!");
-console.log("Available profiles:", Object.keys(profiles).join(", "));
-console.log("Ready to start networking!");
+console.log("🎯 NetworkVision app loaded successfully!");
+console.log("📋 Available profiles:", Object.keys(profiles).join(", "));
+console.log("🚀 Ready to start networking!");
+console.log("📱 VR-optimized for mobile experience");
