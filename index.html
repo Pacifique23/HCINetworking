@@ -4,316 +4,43 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NetworkVision - AR Networking Glasses</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
 
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: #000;
-        color: white;
-        overflow: hidden;
-        user-select: none;
-      }
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js"></script>
 
-      .vr-container {
-        width: 100vw;
-        height: 100vh;
-        display: flex;
-        position: relative;
-      }
-
-      .eye-view {
-        width: 50%;
-        height: 100%;
-        position: relative;
-        border: 1px solid #333;
-      }
-
-      .camera-feed {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        background: #111;
-      }
-
-      .overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 10;
-      }
-
-      .profile-card {
-        position: absolute;
-        background: rgba(0, 20, 40, 0.95);
-        border: 2px solid #00ffff;
-        border-radius: 15px;
-        padding: 20px;
-        min-width: 280px;
-        max-width: 320px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
-        animation: slideIn 0.5s ease-out;
-        transform-origin: center;
-      }
-
-      @keyframes slideIn {
-        from {
-          opacity: 0;
-          transform: scale(0.8) translateY(-20px);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1) translateY(0);
-        }
-      }
-
-      .profile-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 15px;
-      }
-
-      .profile-avatar {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        font-weight: bold;
-        margin-right: 15px;
-        border: 2px solid #00ffff;
-      }
-
-      .profile-name {
-        font-size: 18px;
-        font-weight: bold;
-        color: #00ffff;
-        margin-bottom: 5px;
-      }
-
-      .profile-title {
-        font-size: 14px;
-        color: #cccccc;
-        opacity: 0.9;
-      }
-
-      .profile-company {
-        font-size: 12px;
-        color: #888;
-        margin-bottom: 15px;
-      }
-
-      .profile-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 15px;
-      }
-
-      .tag {
-        background: rgba(0, 255, 255, 0.2);
-        border: 1px solid #00ffff;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-        color: #00ffff;
-      }
-
-      .profile-interests {
-        font-size: 12px;
-        color: #ccc;
-        line-height: 1.4;
-      }
-
-      .interests-label {
-        color: #00ffff;
-        font-weight: bold;
-        margin-bottom: 5px;
-      }
-
-      .scanning-indicator {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 255, 255, 0.1);
-        border: 1px solid #00ffff;
-        padding: 10px 20px;
-        border-radius: 25px;
-        font-size: 14px;
-        color: #00ffff;
-        backdrop-filter: blur(5px);
-        animation: pulse 2s infinite;
-      }
-
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 0.7;
-        }
-        50% {
-          opacity: 1;
-        }
-      }
-
-      .crosshair {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 30px;
-        height: 30px;
-        border: 2px solid #00ffff;
-        border-radius: 50%;
-        opacity: 0.6;
-      }
-
-      .crosshair::before,
-      .crosshair::after {
-        content: "";
-        position: absolute;
-        background: #00ffff;
-      }
-
-      .crosshair::before {
-        width: 20px;
-        height: 2px;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-      }
-
-      .crosshair::after {
-        width: 2px;
-        height: 20px;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-      }
-
-      .startup-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-          135deg,
-          #0c0c0c 0%,
-          #1a1a2e 50%,
-          #16213e 100%
-        );
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        transition: opacity 0.5s ease;
-      }
-
-      .logo {
-        font-size: 48px;
-        font-weight: bold;
-        color: #00ffff;
-        margin-bottom: 20px;
-        text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-      }
-
-      .subtitle {
-        font-size: 18px;
-        color: #ccc;
-        margin-bottom: 40px;
-        text-align: center;
-      }
-
-      .start-button {
-        background: linear-gradient(135deg, #00ffff, #0080ff);
-        border: none;
-        padding: 15px 30px;
-        border-radius: 25px;
-        color: white;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
-      }
-
-      .start-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 7px 20px rgba(0, 255, 255, 0.4);
-      }
-
-      .error-message {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(255, 0, 0, 0.1);
-        border: 2px solid #ff0000;
-        padding: 20px;
-        border-radius: 10px;
-        color: #ff6666;
-        text-align: center;
-        backdrop-filter: blur(10px);
-      }
-
-      .instructions {
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.7);
-        padding: 10px 20px;
-        border-radius: 20px;
-        font-size: 12px;
-        color: #ccc;
-        text-align: center;
-        backdrop-filter: blur(5px);
-      }
-
-      @media (max-width: 768px) {
-        .profile-card {
-          min-width: 240px;
-          max-width: 280px;
-          padding: 15px;
-        }
-
-        .profile-name {
-          font-size: 16px;
-        }
-
-        .logo {
-          font-size: 36px;
-        }
-      }
-    </style>
+    <!-- Local Stylesheets -->
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Startup Screen -->
     <div class="startup-screen" id="startupScreen">
-      <div class="logo">NetworkVision</div>
-      <div class="subtitle">
-        AR-Enhanced Networking Experience<br />Put on your glasses and start
-        connecting
+      <div class="startup-content">
+        <div class="logo-container">
+          <div class="logo">NetworkVision</div>
+          <div class="logo-accent"></div>
+        </div>
+        <div class="subtitle">
+          AR-Enhanced Networking Experience<br />
+          <span class="subtitle-accent"
+            >Put on your glasses and start connecting</span
+          >
+        </div>
+        <button class="start-button" onclick="startApp()">
+          <span class="button-text">Start Networking</span>
+          <div class="button-glow"></div>
+        </button>
       </div>
-      <button class="start-button" onclick="startApp()">
-        Start Networking
-      </button>
+      <div class="startup-background">
+        <div class="floating-particle"></div>
+        <div class="floating-particle"></div>
+        <div class="floating-particle"></div>
+      </div>
     </div>
 
+    <!-- Main VR Container -->
     <div class="vr-container" id="vrContainer" style="display: none">
-      <div class="eye-view">
+      <!-- Left Eye View -->
+      <div class="eye-view" id="leftEye">
         <video
           class="camera-feed"
           id="cameraLeft"
@@ -322,14 +49,21 @@
           playsinline
         ></video>
         <div class="overlay" id="overlayLeft">
-          <div class="scanning-indicator">Scanning for professionals...</div>
-          <div class="crosshair"></div>
+          <div class="scanning-indicator">
+            <div class="scan-pulse"></div>
+            <span>Scanning for professionals...</span>
+          </div>
+          <div class="crosshair">
+            <div class="crosshair-inner"></div>
+          </div>
           <div class="instructions">
             Point camera at QR codes to discover professionals
           </div>
         </div>
       </div>
-      <div class="eye-view">
+
+      <!-- Right Eye View -->
+      <div class="eye-view" id="rightEye">
         <video
           class="camera-feed"
           id="cameraRight"
@@ -338,8 +72,13 @@
           playsinline
         ></video>
         <div class="overlay" id="overlayRight">
-          <div class="scanning-indicator">Scanning for professionals...</div>
-          <div class="crosshair"></div>
+          <div class="scanning-indicator">
+            <div class="scan-pulse"></div>
+            <span>Scanning for professionals...</span>
+          </div>
+          <div class="crosshair">
+            <div class="crosshair-inner"></div>
+          </div>
           <div class="instructions">
             Point camera at QR codes to discover professionals
           </div>
@@ -347,367 +86,50 @@
       </div>
     </div>
 
+    <!-- Debug Panel -->
+    <div class="debug-panel" id="debugPanel" style="display: none">
+      <div class="debug-header">
+        <span class="debug-title">NetworkVision Debug</span>
+        <div class="debug-status-dot"></div>
+      </div>
+      <div class="debug-content">
+        <div class="debug-item">
+          <span class="debug-label">Camera:</span>
+          <span class="debug-value" id="cameraStatus">Loading...</span>
+        </div>
+        <div class="debug-item">
+          <span class="debug-label">Scanning:</span>
+          <span class="debug-value" id="scanStatus">Inactive</span>
+        </div>
+        <div class="debug-item">
+          <span class="debug-label">Last QR:</span>
+          <span class="debug-value" id="lastQR">None</span>
+        </div>
+        <div class="debug-item">
+          <span class="debug-label">Found:</span>
+          <span class="debug-value" id="profilesFound">0</span>
+        </div>
+        <div class="debug-item">
+          <span class="debug-label">FPS:</span>
+          <span class="debug-value" id="fpsCounter">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Control Buttons -->
+    <div class="control-buttons">
+      <button class="control-btn debug-btn" onclick="toggleDebug()">
+        <span>Debug</span>
+      </button>
+      <button class="control-btn test-btn" onclick="testProfile()">
+        <span>Test</span>
+      </button>
+    </div>
+
+    <!-- Hidden Canvas for QR Processing -->
     <canvas id="qrCanvas" style="display: none"></canvas>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
-    <script>
-      // Professional profiles database - Add your test participants here
-      const profiles = {
-        sarah_chen: {
-          name: "Dr. Sarah Chen",
-          title: "AI Research Director",
-          company: "TechFlow Innovations",
-          avatar: "SC",
-          tags: ["Machine Learning", "Computer Vision", "Deep Learning"],
-          interests:
-            "Passionate about ethical AI development and mentoring young engineers. Looking to collaborate on healthcare AI applications.",
-          color: "#667eea",
-          qrCode: "sarah_chen", // What should be in the QR code
-        },
-        james_wilson: {
-          name: "James Wilson",
-          title: "Senior Product Manager",
-          company: "StartupHub Ventures",
-          avatar: "JW",
-          tags: ["Product Strategy", "User Experience", "Growth Hacking"],
-          interests:
-            "Experienced in scaling B2B SaaS products. Always interested in discussing market trends and user psychology.",
-          color: "#764ba2",
-          qrCode: "james_wilson",
-        },
-        maria_rodriguez: {
-          name: "Maria Rodriguez",
-          title: "Cybersecurity Consultant",
-          company: "SecureNet Solutions",
-          avatar: "MR",
-          tags: ["Network Security", "Penetration Testing", "Risk Assessment"],
-          interests:
-            "Specializes in helping startups build secure infrastructure. Enjoys sharing knowledge about emerging security threats.",
-          color: "#f093fb",
-          qrCode: "maria_rodriguez",
-        },
-        david_kim: {
-          name: "David Kim",
-          title: "Venture Capital Partner",
-          company: "Innovation Capital",
-          avatar: "DK",
-          tags: ["Early Stage Investing", "Fintech", "Mobile Apps"],
-          interests:
-            "Looking for revolutionary fintech and mobile solutions. Happy to provide funding advice and industry connections.",
-          color: "#f5576c",
-          qrCode: "david_kim",
-        },
-        lisa_thompson: {
-          name: "Lisa Thompson",
-          title: "UX Design Lead",
-          company: "Creative Digital Agency",
-          avatar: "LT",
-          tags: ["User Research", "Interaction Design", "Accessibility"],
-          interests:
-            "Advocates for inclusive design and accessibility. Always excited to discuss user-centered design methodologies.",
-          color: "#4ecdc4",
-          qrCode: "lisa_thompson",
-        },
-        // Add your real test participants here
-        prof_anderson: {
-          name: "Prof. Michael Anderson",
-          title: "Computer Science Professor",
-          company: "University Research Lab",
-          avatar: "MA",
-          tags: [
-            "Human-Computer Interaction",
-            "User Studies",
-            "Academic Research",
-          ],
-          interests:
-            "Researching the future of human-computer interaction. Always looking for innovative student projects to mentor.",
-          color: "#ff6b6b",
-          qrCode: "prof_anderson",
-        },
-        startup_founder: {
-          name: "Alex Rivera",
-          title: "Tech Startup Founder",
-          company: "NextGen Solutions",
-          avatar: "AR",
-          tags: ["Entrepreneurship", "Product Development", "Team Building"],
-          interests:
-            "Building the next generation of productivity tools. Open to discussing startup challenges and student internships.",
-          color: "#4ecdc4",
-          qrCode: "startup_founder",
-        },
-      };
-
-      // Function to easily add new profiles during testing
-      function addTestProfile(id, profileData) {
-        profiles[id] = {
-          ...profileData,
-          qrCode: id,
-        };
-        console.log(`Added profile: ${profileData.name} (QR: ${id})`);
-      }
-
-      let stream = null;
-      let isScanning = false;
-      let currentProfiles = new Set();
-      let scanningInterval = null;
-
-      async function startApp() {
-        const startupScreen = document.getElementById("startupScreen");
-        const vrContainer = document.getElementById("vrContainer");
-
-        startupScreen.style.opacity = "0";
-        setTimeout(() => {
-          startupScreen.style.display = "none";
-          vrContainer.style.display = "flex";
-          initializeCamera();
-        }, 500);
-      }
-
-      async function initializeCamera() {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: "environment",
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-            },
-          });
-
-          const cameraLeft = document.getElementById("cameraLeft");
-          const cameraRight = document.getElementById("cameraRight");
-
-          cameraLeft.srcObject = stream;
-          cameraRight.srcObject = stream;
-
-          startQRScanning();
-        } catch (error) {
-          console.error("Camera access error:", error);
-          showError(
-            "Camera access denied. Please allow camera permissions and refresh the page."
-          );
-        }
-      }
-
-      function startQRScanning() {
-        if (scanningInterval) return;
-
-        scanningInterval = setInterval(() => {
-          scanForQRCodes();
-        }, 500);
-      }
-
-      function scanForQRCodes() {
-        const video = document.getElementById("cameraLeft");
-        const canvas = document.getElementById("qrCanvas");
-        const context = canvas.getContext("2d");
-
-        if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const imageData = context.getImageData(
-          0,
-          0,
-          canvas.width,
-          canvas.height
-        );
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-        if (code && code.data) {
-          handleQRDetection(code.data);
-        }
-      }
-
-      function handleQRDetection(qrData) {
-        // Remove any URL prefixes to get the profile ID
-        const profileId = qrData
-          .trim()
-          .replace(/^https?:\/\/[^\/]+\//, "")
-          .replace(/^.*profile=/, "");
-
-        console.log("QR Detected:", qrData, "→ Profile ID:", profileId);
-
-        if (profiles[profileId] && !currentProfiles.has(profileId)) {
-          console.log("Showing profile for:", profiles[profileId].name);
-          showProfile(profiles[profileId]);
-          currentProfiles.add(profileId);
-
-          // Visual feedback - flash border
-          document.querySelectorAll(".eye-view").forEach((view) => {
-            view.style.border = "3px solid #00ffff";
-            setTimeout(() => (view.style.border = "1px solid #333"), 200);
-          });
-
-          // Auto-dismiss after 8 seconds
-          setTimeout(() => {
-            currentProfiles.delete(profileId);
-          }, 8000);
-        } else if (!profiles[profileId]) {
-          console.log("No profile found for ID:", profileId);
-          showNoProfileMessage(profileId);
-        }
-      }
-
-      function showNoProfileMessage(profileId) {
-        const message = document.createElement("div");
-        message.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(255, 100, 100, 0.9);
-                color: white;
-                padding: 10px 20px;
-                border-radius: 5px;
-                z-index: 1000;
-                font-size: 14px;
-            `;
-        message.textContent = `Profile not found: ${profileId}`;
-        document.body.appendChild(message);
-
-        setTimeout(() => message.remove(), 3000);
-      }
-
-      function showProfile(profile) {
-        const overlayLeft = document.getElementById("overlayLeft");
-        const overlayRight = document.getElementById("overlayRight");
-
-        const profileCard = createProfileCard(profile);
-
-        // Position randomly but avoid center area
-        const positions = [
-          { top: "15%", right: "10%" },
-          { top: "20%", left: "10%" },
-          { bottom: "25%", right: "15%" },
-          { bottom: "30%", left: "15%" },
-          { top: "40%", right: "5%" },
-        ];
-
-        const position =
-          positions[Math.floor(Math.random() * positions.length)];
-        Object.assign(profileCard.style, position);
-
-        overlayLeft.appendChild(profileCard.cloneNode(true));
-        overlayRight.appendChild(profileCard);
-
-        // Remove after animation
-        setTimeout(() => {
-          const cards = document.querySelectorAll(".profile-card");
-          cards.forEach((card) => {
-            if (card.dataset.profile === profile.name) {
-              card.style.opacity = "0";
-              card.style.transform = "scale(0.8) translateY(-20px)";
-              setTimeout(() => card.remove(), 500);
-            }
-          });
-        }, 8000);
-
-        // Vibration feedback if supported
-        if (navigator.vibrate) {
-          navigator.vibrate([50, 30, 50]);
-        }
-      }
-
-      function createProfileCard(profile) {
-        const card = document.createElement("div");
-        card.className = "profile-card";
-        card.dataset.profile = profile.name;
-
-        card.innerHTML = `
-                <div class="profile-header">
-                    <div class="profile-avatar" style="background: linear-gradient(135deg, ${
-                      profile.color
-                    }, ${adjustColor(profile.color, -20)})">
-                        ${profile.avatar}
-                    </div>
-                    <div>
-                        <div class="profile-name">${profile.name}</div>
-                        <div class="profile-title">${profile.title}</div>
-                        <div class="profile-company">${profile.company}</div>
-                    </div>
-                </div>
-                <div class="profile-tags">
-                    ${profile.tags
-                      .map((tag) => `<span class="tag">${tag}</span>`)
-                      .join("")}
-                </div>
-                <div class="profile-interests">
-                    <div class="interests-label">Connect about:</div>
-                    ${profile.interests}
-                </div>
-            `;
-
-        return card;
-      }
-
-      function adjustColor(hex, percent) {
-        const num = parseInt(hex.replace("#", ""), 16);
-        const amt = Math.round(2.55 * percent);
-        const R = (num >> 16) + amt;
-        const G = ((num >> 8) & 0x00ff) + amt;
-        const B = (num & 0x0000ff) + amt;
-        return (
-          "#" +
-          (
-            0x1000000 +
-            (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
-            (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
-            (B < 255 ? (B < 1 ? 0 : B) : 255)
-          )
-            .toString(16)
-            .slice(1)
-        );
-      }
-
-      function showError(message) {
-        const errorDiv = document.createElement("div");
-        errorDiv.className = "error-message";
-        errorDiv.innerHTML = `
-                <h3>Camera Error</h3>
-                <p>${message}</p>
-                <button onclick="location.reload()" style="margin-top: 15px; padding: 10px 20px; background: #ff6666; border: none; border-radius: 5px; color: white; cursor: pointer;">Retry</button>
-            `;
-        document.body.appendChild(errorDiv);
-      }
-
-      // Handle device orientation and fullscreen
-      window.addEventListener("orientationchange", () => {
-        setTimeout(() => location.reload(), 500);
-      });
-
-      // Prevent sleep mode
-      let wakeLock = null;
-      async function requestWakeLock() {
-        try {
-          if ("wakeLock" in navigator) {
-            wakeLock = await navigator.wakeLock.request("screen");
-          }
-        } catch (err) {
-          console.log("Wake lock error:", err);
-        }
-      }
-
-      // Demo mode - simulate QR detection for testing
-      function startDemoMode() {
-        const profileIds = Object.keys(profiles);
-        let demoIndex = 0;
-
-        setInterval(() => {
-          if (demoIndex < profileIds.length) {
-            handleQRDetection(profileIds[demoIndex]);
-            demoIndex++;
-          } else {
-            demoIndex = 0;
-          }
-        }, 3000);
-      }
-
-      // Uncomment the line below to enable demo mode for testing without QR codes
-      // setTimeout(startDemoMode, 2000);
-
-      requestWakeLock();
-    </script>
+    <!-- Load JavaScript -->
+    <script src="app.js"></script>
   </body>
 </html>
