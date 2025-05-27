@@ -1,69 +1,6 @@
 // NetworkVision AR Networking Glasses
 // Main JavaScript Application
 
-// Function to easily add new profiles during testing
-function addTestProfile(id, profileData) {
-    profiles[id] = {
-        ...profileData,
-        qrCode: id
-    };
-    console.log(`Added profile: ${profileData.name} (QR: ${id})`);
-}
-
-// Debug functions
-function toggleDebug() {
-    const panel = document.getElementById("debugPanel");
-    const isVisible = panel.style.display !== "none";
-    panel.style.display = isVisible ? "none" : "block";
-    
-    if (!isVisible) {
-        updateDebugPanel();
-    }
-}
-
-function testProfile() {
-    // Test with the first profile for demonstration
-    const testId = Object.keys(profiles)[0];
-    console.log(`Testing profile: ${testId}`);
-    handleQRDetection(testId);
-    updateDebugPanel(`Manual test: ${testId}`);
-    showNotification("Test profile displayed!", "success");
-}
-
-function updateDebugPanel(message = null) {
-    if (message) {
-        document.getElementById("lastQR").textContent = message;
-    }
-    
-    document.getElementById("profilesFound").textContent = currentProfiles.size;
-    
-    // Update FPS counter
-    const now = Date.now();
-    const fps = Math.round(1000 / (now - lastScanTime));
-    document.getElementById("fpsCounter").textContent = fps;
-    lastScanTime = now;
-}
-
-// Main application startup
-async function startApp() {
-    console.log("Starting NetworkVision app...");
-    
-    const startupScreen = document.getElementById("startupScreen");
-    const vrContainer = document.getElementById("vrContainer");
-
-    // Smooth transition animation
-    startupScreen.style.opacity = "0";
-    
-    setTimeout(() => {
-        startupScreen.style.display = "none";
-        vrContainer.style.display = "flex";
-        initializeCamera();
-    }, 800);
-}
-
-// NetworkVision AR Networking Glasses
-// Main JavaScript Application
-
 // Professional profiles database
 const profiles = {
     sarah_chen: {
@@ -145,7 +82,7 @@ function addTestProfile(id, profileData) {
         ...profileData,
         qrCode: id
     };
-    console.log(`✅ Added profile: ${profileData.name} (QR: ${id})`);
+    console.log(`Added profile: ${profileData.name} (QR: ${id})`);
 }
 
 // Debug functions
@@ -162,7 +99,7 @@ function toggleDebug() {
 function testProfile() {
     // Test with the first profile for demonstration
     const testId = Object.keys(profiles)[0];
-    console.log(`🧪 Testing profile: ${testId}`);
+    console.log(`Testing profile: ${testId}`);
     handleQRDetection(testId);
     updateDebugPanel(`Manual test: ${testId}`);
     showNotification("Test profile displayed!", "success");
@@ -184,7 +121,7 @@ function updateDebugPanel(message = null) {
 
 // Main application startup
 async function startApp() {
-    console.log("🚀 Starting NetworkVision app...");
+    console.log("Starting NetworkVision app...");
     
     const startupScreen = document.getElementById("startupScreen");
     const vrContainer = document.getElementById("vrContainer");
@@ -201,7 +138,7 @@ async function startApp() {
 
 // Camera initialization
 async function initializeCamera() {
-    console.log("📷 Initializing camera...");
+    console.log("Initializing camera...");
     updateCameraStatus("Requesting...");
     
     try {
@@ -260,7 +197,7 @@ function startQRScanning() {
         clearInterval(scanningInterval);
     }
 
-    console.log("🔍 Starting QR code scanning...");
+    console.log("Starting QR code scanning...");
     updateScanStatus("Active");
     isScanning = true;
     
@@ -280,7 +217,7 @@ function stopQRScanning() {
     }
     isScanning = false;
     updateScanStatus("Stopped");
-    console.log("⏹️ QR scanning stopped");
+    console.log("QR scanning stopped");
 }
 
 function scanForQRCodes() {
@@ -322,7 +259,7 @@ function detectQRCode(imageData, canvas) {
         });
 
         if (code && code.data) {
-            console.log("🎯 jsQR detected:", code.data);
+            console.log("jsQR detected:", code.data);
             updateDebugPanel(`jsQR: ${code.data}`);
             handleQRDetection(code.data);
             return;
@@ -392,7 +329,7 @@ function handleQRDetection(qrData) {
             updateDebugPanel(`Unknown: ${profileId}`);
             showNoProfileMessage(profileId);
         } else {
-            console.log("Profile already displayed:", profileId);
+            console.log("ℹ️ Profile already displayed:", profileId);
             updateDebugPanel(`Already shown: ${profileId}`);
         }
 
@@ -468,17 +405,8 @@ function showProfile(profile) {
 
     const profileCard = createProfileCard(profile);
 
-    // Random positioning to avoid overlap
-    const positions = [
-        { top: "15%", right: "10%" },
-        { top: "20%", left: "10%" },
-        { bottom: "25%", right: "15%" },
-        { bottom: "30%", left: "15%" },
-        { top: "40%", right: "5%" },
-        { top: "50%", left: "5%" }
-    ];
-
-    const position = positions[Math.floor(Math.random() * positions.length)];
+    // Smart positioning for mobile and desktop
+    const position = getOptimalPosition();
     Object.assign(profileCard.style, position);
 
     // Add to both eye overlays
@@ -508,6 +436,45 @@ function showProfile(profile) {
     // Haptic feedback if supported
     if (navigator.vibrate) {
         navigator.vibrate([50, 30, 50]);
+    }
+}
+
+// Smart positioning system for different screen sizes
+function getOptimalPosition() {
+    const isMobile = window.innerWidth <= 768;
+    const isSmallMobile = window.innerWidth <= 375;
+    
+    if (isSmallMobile) {
+        // Very small screens - center positioning
+        return {
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)"
+        };
+    } else if (isMobile) {
+        // Mobile screens - avoid center area, use edges
+        const mobilePositions = [
+            { top: "10%", left: "5%" },
+            { top: "10%", right: "5%" },
+            { bottom: "15%", left: "5%" },
+            { bottom: "15%", right: "5%" },
+            { top: "30%", left: "2%" },
+            { top: "30%", right: "2%" }
+        ];
+        return mobilePositions[Math.floor(Math.random() * mobilePositions.length)];
+    } else {
+        // Desktop/tablet - more positioning options
+        const desktopPositions = [
+            { top: "15%", right: "10%" },
+            { top: "20%", left: "10%" },
+            { bottom: "25%", right: "15%" },
+            { bottom: "30%", left: "15%" },
+            { top: "40%", right: "5%" },
+            { top: "50%", left: "5%" },
+            { top: "25%", right: "25%" },
+            { bottom: "20%", left: "25%" }
+        ];
+        return desktopPositions[Math.floor(Math.random() * desktopPositions.length)];
     }
 }
 
@@ -559,7 +526,7 @@ function adjustColor(hex, percent) {
 // Error handling and user messages
 function showError(message) {
     console.error("Error:", message);
-
+    
     const errorDiv = document.createElement("div");
     errorDiv.className = "error-message";
     errorDiv.innerHTML = `
@@ -660,7 +627,7 @@ function updateScanStatus(status) {
 
 // Device orientation and lifecycle management
 window.addEventListener("orientationchange", () => {
-    console.log("📱 Orientation changed, reloading...");
+    console.log("Orientation changed, reloading...");
     setTimeout(() => location.reload(), 500);
 });
 
@@ -670,10 +637,10 @@ async function requestWakeLock() {
     try {
         if ("wakeLock" in navigator) {
             wakeLock = await navigator.wakeLock.request("screen");
-            console.log("💡 Screen wake lock acquired");
+            console.log("Screen wake lock acquired");
         }
     } catch (err) {
-        console.log("💡 Wake lock not available:", err);
+        console.log("Wake lock not available:", err);
     }
 }
 
@@ -738,7 +705,7 @@ function startDemoMode() {
     const profileIds = Object.keys(profiles);
     let demoIndex = 0;
     
-    console.log("Starting demo mode...");
+    console.log("🎭 Starting demo mode...");
     setInterval(() => {
         if (demoIndex < profileIds.length) {
             handleQRDetection(profileIds[demoIndex]);
@@ -755,4 +722,4 @@ function startDemoMode() {
 
 console.log("NetworkVision app loaded successfully!");
 console.log("Available profiles:", Object.keys(profiles).join(", "));
-console.log("Ready to start networking!");      
+console.log("Ready to start networking!");
