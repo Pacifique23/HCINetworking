@@ -6,7 +6,7 @@ const profiles = {
 
     // === SOFTWARE ENGINEERING & COMPUTER SCIENCE (3 profiles) ===
     
-        1: {
+        2: {
             name: "Maya Patel",
             title: "Full-Stack Software Engineer",
             company: "Meta Reality Labs",
@@ -16,7 +16,7 @@ const profiles = {
             color: "#ff6b9d"
         },
     
-        2: {
+        3: {
             name: "Alex Chen",
             title: "Machine Learning Engineer",
             company: "OpenAI Research",
@@ -26,7 +26,7 @@ const profiles = {
             color: "#4ecdc4"
         },
     
-        3: {
+        4: {
             name: "Jordan Williams",
             title: "Mobile App Developer",
             company: "Spotify",
@@ -38,7 +38,7 @@ const profiles = {
     
         // === DIGITAL & VISUAL ARTS (3 profiles) ===
     
-        4: {
+        5: {
             name: "Kai Nakamura",
             title: "Digital Artist & Animator",
             company: "Pixar Animation Studios",
@@ -48,7 +48,7 @@ const profiles = {
             color: "#fd79a8"
         },
     
-        5: {
+        6: {
             name: "Sophia Martinez",
             title: "UX/UI Designer",
             company: "Figma",
@@ -58,7 +58,7 @@ const profiles = {
             color: "#6c5ce7"
         },
     
-        6: {
+        7: {
             name: "Diego Santos",
             title: "Creative Technologist",
             company: "Google Arts & Culture",
@@ -70,7 +70,7 @@ const profiles = {
     
         // === INTERDISCIPLINARY TECH FIELDS (3 profiles) ===
     
-        7: {
+        8: {
             name: "Dr. Benjamin Clark",
             title: "Computational Biologist",
             company: "Harvard Medical School",
@@ -80,7 +80,7 @@ const profiles = {
             color: "#83a598"
         },
     
-        8: {
+        9: {
             name: "Nisha Gupta",
             title: "Data Scientist",
             company: "Airbnb",
@@ -90,7 +90,7 @@ const profiles = {
             color: "#ff7675"
         },
     
-        9: {
+        10: {
             name: "Aisha Okonkwo",
             title: "Digital Health Researcher",
             company: "Apple Health",
@@ -102,7 +102,7 @@ const profiles = {
     
         // === BUSINESS & STRATEGY, ACADEMIA & RESEARCH (3 profiles) ===
     
-        10: {
+        11: {
             name: "Isabella Rossi",
             title: "Product Manager",
             company: "Slack",
@@ -112,7 +112,7 @@ const profiles = {
             color: "#fab1a0"
         },
     
-        11: {
+        12: {
             name: "James Thompson",
             title: "Tech Consultant",
             company: "McKinsey Digital",
@@ -122,7 +122,7 @@ const profiles = {
             color: "#74b9ff"
         },
     
-        12: {
+        13: {
             name: "Prof. Michael Adebayo",
             title: "Computer Graphics Professor",
             company: "Stanford University",
@@ -134,7 +134,7 @@ const profiles = {
     
         // === Other fields (8 profiles) ===
     
-        13: {
+        14: {
             name: "Dr. Maria Gonzalez",
             title: "Pediatric Surgeon",
             company: "Boston Children's Hospital",
@@ -144,7 +144,7 @@ const profiles = {
             color: "#e53e3e"
         },
     
-        14: {
+        15: {
             name: "Robert Johnson",
             title: "Investment Banking Director",
             company: "Goldman Sachs",
@@ -154,7 +154,7 @@ const profiles = {
             color: "#2d3748"
         },
     
-        15: {
+        16: {
             name: "Lisa Chen",
             title: "Environmental Lawyer",
             company: "Natural Resources Defense Council",
@@ -164,7 +164,7 @@ const profiles = {
             color: "#38a169"
         },
     
-        16: {
+        17: {
             name: "Dr. Ahmed Hassan",
             title: "Clinical Psychologist",
             company: "Stanford Psychology Clinic",
@@ -174,7 +174,7 @@ const profiles = {
             color: "#805ad5"
         },
     
-        17: {
+        18: {
             name: "Emily Baker",
             title: "Architectural Designer",
             company: "Foster + Partners",
@@ -184,7 +184,7 @@ const profiles = {
             color: "#dd6b20"
         },
     
-        18: {
+        19: {
             name: "Carlos Rivera",
             title: "Documentary Filmmaker",
             company: "National Geographic",
@@ -194,7 +194,7 @@ const profiles = {
             color: "#3182ce"
         },
     
-        19: {
+        20: {
             name: "Dr. Fatima Al-Zahra",
             title: "Renewable Energy Engineer",
             company: "Tesla Energy Division",
@@ -204,7 +204,7 @@ const profiles = {
             color: "#d69e2e"
         },
     
-        20: {
+        21: {
             name: "Jonathan Mills",
             title: "Executive Chef & Restaurateur",
             company: "Michelin-Starred Restaurant Group",
@@ -523,7 +523,7 @@ const profiles = {
                 .replace(/[^0-9]/g, ""); // Keep only numbers
     
             // Convert to integer
-            profileId = parseInt(profileId);
+            profileId = parseInt((profileId));
     
             console.log("🔍 QR Detected:", qrData, "→ Profile ID:", profileId);
             updateDebugPanel(`Found: ${profileId}`);
@@ -633,7 +633,7 @@ const profiles = {
         const profileCard = createProfileCard(profile);
     
         // Position next to QR code if we have the position
-        const position = getQRBasedPosition();
+        const position = getCenteredPosition();
         Object.assign(profileCard.style, position);
     
         // Add to both eye overlays
@@ -666,48 +666,14 @@ const profiles = {
         }
     }
     
-    // Smart positioning based on QR code location
-    function getQRBasedPosition() {
-        if (!lastQRPosition) {
-            // Fallback to safe default position
-            return {
-                top: "20%",
-                right: "10%"
-            };
-        }
-    
-        const overlay = document.getElementById("overlayLeft");
-        const overlayRect = overlay.getBoundingClientRect();
-        
-        // Convert QR canvas coordinates to overlay coordinates
-        const qrCenterX = (lastQRPosition.x + lastQRPosition.width / 2) / lastQRPosition.canvasWidth;
-        const qrCenterY = (lastQRPosition.y + lastQRPosition.height / 2) / lastQRPosition.canvasHeight;
-        
-        // Determine best position relative to QR code
-        let position = {};
-        
-        // Check if QR is in left half or right half
-        if (qrCenterX < 0.5) {
-            // QR is on left, put profile on right side
-            position.left = `${Math.min(qrCenterX * 100 + 25, 70)}%`;
-        } else {
-            // QR is on right, put profile on left side
-            position.right = `${Math.min((1 - qrCenterX) * 100 + 25, 70)}%`;
-        }
-        
-        // Vertical positioning - avoid extreme top/bottom
-        if (qrCenterY < 0.3) {
-            // QR is at top, put profile below
-            position.top = `${Math.max(qrCenterY * 100 + 15, 25)}%`;
-        } else if (qrCenterY > 0.7) {
-            // QR is at bottom, put profile above
-            position.bottom = `${Math.max((1 - qrCenterY) * 100 + 15, 25)}%`;
-        } else {
-            // QR is in middle, align vertically
-            position.top = `${Math.max(Math.min(qrCenterY * 100 - 10, 60), 20)}%`;
-        }
-        
-        return position;
+    function getCenteredPosition() {
+        return {
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: "1000"
+        };
     }
     
     // Enhanced QR scanning with better stability
