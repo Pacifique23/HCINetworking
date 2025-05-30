@@ -39,45 +39,51 @@ function showProfile(profile) {
     }
 }
 
-// Smart positioning based on QR code location
+// Smart positioning based on QR code location - Avoid corners
 function getQRBasedPosition() {
     if (!lastQRPosition) {
-        // Fallback to safe default position
-        return {
-            top: "20%",
-            right: "10%"
-        };
+        // Fallback to safe central positions (avoid corners)
+        const safePositions = [
+            { top: "25%", left: "20%" },
+            { top: "25%", right: "20%" },
+            { top: "45%", left: "15%" },
+            { top: "45%", right: "15%" }
+        ];
+        return safePositions[Math.floor(Math.random() * safePositions.length)];
     }
 
     const overlay = document.getElementById("overlayLeft");
-    const overlayRect = overlay.getBoundingClientRect();
     
     // Convert QR canvas coordinates to overlay coordinates
     const qrCenterX = (lastQRPosition.x + lastQRPosition.width / 2) / lastQRPosition.canvasWidth;
     const qrCenterY = (lastQRPosition.y + lastQRPosition.height / 2) / lastQRPosition.canvasHeight;
     
-    // Determine best position relative to QR code
+    // Determine best position relative to QR code but avoid corners
     let position = {};
     
-    // Check if QR is in left half or right half
-    if (qrCenterX < 0.5) {
-        // QR is on left, put profile on right side
-        position.left = `${Math.min(qrCenterX * 100 + 25, 70)}%`;
+    // Horizontal positioning - keep away from extreme edges
+    if (qrCenterX < 0.4) {
+        // QR is on left, put profile on right side but not at edge
+        position.left = `${Math.min(Math.max(qrCenterX * 100 + 20, 15), 60)}%`;
+    } else if (qrCenterX > 0.6) {
+        // QR is on right, put profile on left side but not at edge
+        position.right = `${Math.min(Math.max((1 - qrCenterX) * 100 + 20, 15), 60)}%`;
     } else {
-        // QR is on right, put profile on left side
-        position.right = `${Math.min((1 - qrCenterX) * 100 + 25, 70)}%`;
+        // QR is in center, position to the side
+        position.left = qrCenterX < 0.5 ? "15%" : "auto";
+        position.right = qrCenterX >= 0.5 ? "15%" : "auto";
     }
     
-    // Vertical positioning - avoid extreme top/bottom
-    if (qrCenterY < 0.3) {
-        // QR is at top, put profile below
-        position.top = `${Math.max(qrCenterY * 100 + 15, 25)}%`;
-    } else if (qrCenterY > 0.7) {
-        // QR is at bottom, put profile above
-        position.bottom = `${Math.max((1 - qrCenterY) * 100 + 15, 25)}%`;
+    // Vertical positioning - avoid extreme top/bottom (corners)
+    if (qrCenterY < 0.25) {
+        // QR is at top, put profile below but not too far down
+        position.top = `${Math.min(Math.max(qrCenterY * 100 + 20, 25), 50)}%`;
+    } else if (qrCenterY > 0.75) {
+        // QR is at bottom, put profile above but not too high
+        position.bottom = `${Math.min(Math.max((1 - qrCenterY) * 100 + 20, 25), 50)}%`;
     } else {
-        // QR is in middle, align vertically
-        position.top = `${Math.max(Math.min(qrCenterY * 100 - 10, 60), 20)}%`;
+        // QR is in middle, align vertically but avoid edges
+        position.top = `${Math.min(Math.max(qrCenterY * 100 - 15, 25), 50)}%`;
     }
     
     return position;
@@ -100,7 +106,7 @@ function startQRScanning() {
                 scanForQRCodes();
                 scanCount++;
             } catch (error) {
-                console.error("Scan error:", error);
+                console.error("❌ Scan error:", error);
                 // Don't stop scanning on errors, just log them
             }
         }
@@ -114,7 +120,7 @@ function stopQRScanning() {
     }
     isScanning = false;
     updateScanStatus("Stopped");
-    console.log("QR scanning stopped");
+    console.log("⏹️ QR scanning stopped");
 }
 
 // Better resource cleanup
@@ -126,7 +132,7 @@ function cleanupResources() {
     if (stream) {
         stream.getTracks().forEach(track => {
             track.stop();
-            console.log(`Stopped ${track.kind} track`);
+            console.log(`🔇 Stopped ${track.kind} track`);
         });
         stream = null;
     }
@@ -180,7 +186,7 @@ function setupVideoErrorHandling() {
     
     videos.forEach((video, index) => {
         video.addEventListener('error', (e) => {
-            console.error(`Video ${index} error:`, e);
+            console.error(`❌ Video ${index} error:`, e);
             updateCameraStatus("Error");
             
             // Try to recover after a delay
@@ -208,241 +214,243 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Enhanced wake lock with retry logic
+// Ensure wakeLock is declared only once
 async function requestWakeLock() {
     try {
         if ("wakeLock" in navigator) {
             wakeLock = await navigator.wakeLock.request("screen");
-            console.log("Screen wake lock acquired");
+            console.log("💡 Screen wake lock acquired");
             
             wakeLock.addEventListener('release', () => {
-                console.log("Wake lock released");
+                console.log("💡 Wake lock released");
                 // Try to reacquire after a delay
                 setTimeout(requestWakeLock, 2000);
             });
         }
     } catch (err) {
-        console.log("Wake lock not available:", err.message);
+        console.log("💡 Wake lock not available:", err.message);
         // Retry in 5 seconds
         setTimeout(requestWakeLock, 5000);
     }
 }// NetworkVision AR Networking Glasses
 // Main JavaScript Application
 
+
 // Professional profiles database
 const profiles = {
 
-// === SOFTWARE ENGINEERING & COMPUTER SCIENCE (3 profiles) ===
-
-    maya_patel: {
-        name: "Maya Patel",
-        title: "Full-Stack Software Engineer",
-        company: "Meta Reality Labs",
-        avatar: "MP",
-        tags: ["React", "Node.js", "VR Development"],
-        interests: "Building immersive web experiences and AR/VR applications. Passionate about accessibility in virtual environments and mentoring women in tech.",
-        color: "#ff6b9d"
-    },
-
-    alex_chen: {
-        name: "Alex Chen",
-        title: "Machine Learning Engineer",
-        company: "OpenAI Research",
-        avatar: "AC",
-        tags: ["Python", "TensorFlow", "Computer Vision"],
-        interests: "Developing ethical AI systems and exploring human-AI interaction. Currently working on multimodal AI models and their applications in education.",
-        color: "#4ecdc4"
-    },
-
-    jordan_williams: {
-        name: "Jordan Williams",
-        title: "Mobile App Developer",
-        company: "Spotify",
-        avatar: "JW",
-        tags: ["Swift", "Kotlin", "UI/UX"],
-        interests: "Creating intuitive mobile experiences and music recommendation algorithms. Love discussing design patterns and cross-platform development strategies.",
-        color: "#45b7d1"
-    },
-    // === DIGITAL & VISUAL ARTS (3 profiles) ===
-
-    kai_nakamura: {
-        name: "Kai Nakamura",
-        title: "Digital Artist & Animator",
-        company: "Pixar Animation Studios",
-        avatar: "KN",
-        tags: ["3D Animation", "Blender", "Storytelling"],
-        interests: "Creating emotionally compelling animated stories and exploring new animation techniques. Passionate about diversity in animation and mentoring aspiring artists.",
-        color: "#fd79a8"
-    },
-
-    sophia_martinez: {
-        name: "Sophia Martinez",
-        title: "UX/UI Designer",
-        company: "Figma",
-        avatar: "SM",
-        tags: ["Design Systems", "Prototyping", "User Research"],
-        interests: "Designing inclusive digital experiences and building scalable design systems. Advocate for accessibility and human-centered design principles.",
-        color: "#6c5ce7"
-    },
-
-    diego_santos: {
-        name: "Diego Santos",
-        title: "Creative Technologist",
-        company: "Google Arts & Culture",
-        avatar: "DS",
-        tags: ["Interactive Media", "AR Filters", "Creative Coding"],
-        interests: "Bridging art and technology through interactive installations and digital experiences. Exploring AI-generated art and cultural preservation through tech.",
-        color: "#a29bfe"
-    },
-
-
-    // === INTERDISCIPLINARY TECH FIELDS (3 profiles) ===
-
-    dr_benjamin_clark: {
-        name: "Dr. Benjamin Clark",
-        title: "Computational Biologist",
-        company: "Harvard Medical School",
-        avatar: "BC",
-        tags: ["Bioinformatics", "Python", "Data Analysis"],
-        interests: "Using computational methods to understand biological systems and develop personalized medicine. Interested in AI applications in drug discovery.",
-        color: "#83a598"
-    },
-
-    nisha_gupta: {
-        name: "Nisha Gupta",
-        title: "Data Scientist",
-        company: "Airbnb",
-        avatar: "NG",
-        tags: ["Machine Learning", "Statistics", "A/B Testing"],
-        interests: "Leveraging data to improve user experiences and business outcomes. Passionate about ethical AI and reducing algorithmic bias in recommendation systems.",
-        color: "#ff7675"
-    },
-
-    aisha_okonkwo: {
-        name: "Aisha Okonkwo",
-        title: "Digital Health Researcher",
-        company: "Apple Health",
-        avatar: "AO",
-        tags: ["HealthKit", "Wearables", "Privacy"],
-        interests: "Improving healthcare accessibility through technology and wearable devices. Researching health equity and digital therapeutics for underserved communities.",
-        color: "#e17055"
-    },
-
-
-    // === BUSINESS & STRATEGY, ACADEMIA & RESEARCH (3 profiles) ===
-
-    isabella_rossi: {
-        name: "Isabella Rossi",
-        title: "Product Manager",
-        company: "Slack",
-        avatar: "IR",
-        tags: ["Product Strategy", "Agile", "User Analytics"],
-        interests: "Building products that enhance team collaboration and productivity. Interested in the intersection of psychology and product design.",
-        color: "#fab1a0"
-    },
-
-    james_thompson: {
-        name: "James Thompson",
-        title: "Tech Consultant",
-        company: "McKinsey Digital",
-        avatar: "JT",
-        tags: ["Digital Transformation", "Strategy", "Innovation"],
-        interests: "Helping companies navigate digital transformation and adopt emerging technologies. Focused on sustainable business models and social impact.",
-        color: "#74b9ff"
-    },
-
-    prof_michael_adebayo: {
-        name: "Prof. Michael Adebayo",
-        title: "Computer Graphics Professor",
-        company: "Stanford University",
-        avatar: "MA",
-        tags: ["Computer Graphics", "Rendering", "Virtual Production"],
-        interests: "Advancing real-time rendering techniques and virtual production technologies. Collaborating with film studios on next-generation visual effects.",
-        color: "#fdcb6e"
-    },
-
-    // === Other fields (8 profiles) ===
-
-    dr_maria_gonzalez: {
-        name: "Dr. Maria Gonzalez",
-        title: "Pediatric Surgeon",
-        company: "Boston Children's Hospital",
-        avatar: "MG",
-        tags: ["Minimally Invasive Surgery", "Medical Innovation", "Patient Advocacy"],
-        interests: "Pioneering new surgical techniques for children and advocating for healthcare equity. Passionate about medical device design and training the next generation of surgeons.",
-        color: "#e53e3e"
-    },
-
-    robert_johnson: {
-        name: "Robert Johnson",
-        title: "Investment Banking Director",
-        company: "Goldman Sachs",
-        avatar: "RJ",
-        tags: ["Mergers & Acquisitions", "Private Equity", "Financial Modeling"],
-        interests: "Structuring complex financial deals and helping companies scale globally. Interested in sustainable finance and ESG investing strategies.",
-        color: "#2d3748"
-    },
-
-    lisa_chen: {
-        name: "Lisa Chen",
-        title: "Environmental Lawyer",
-        company: "Natural Resources Defense Council",
-        avatar: "LC",
-        tags: ["Climate Policy", "Environmental Law", "Renewable Energy"],
-        interests: "Fighting climate change through legal advocacy and policy reform. Focused on clean energy legislation and protecting endangered ecosystems.",
-        color: "#38a169"
-    },
-
-    dr_ahmed_hassan: {
-        name: "Dr. Ahmed Hassan",
-        title: "Clinical Psychologist",
-        company: "Stanford Psychology Clinic",
-        avatar: "AH",
-        tags: ["Cognitive Behavioral Therapy", "Mental Health", "Research"],
-        interests: "Developing innovative therapies for anxiety and depression. Researching the intersection of technology and mental health treatment accessibility.",
-        color: "#805ad5"
-    },
-
-    emily_baker: {
-        name: "Emily Baker",
-        title: "Architectural Designer",
-        company: "Foster + Partners",
-        avatar: "EB",
-        tags: ["Sustainable Design", "Urban Planning", "3D Modeling"],
-        interests: "Creating eco-friendly buildings and reimagining urban spaces for climate resilience. Passionate about biomimicry in architecture and community-centered design.",
-        color: "#dd6b20"
-    },
-
-    carlos_rivera: {
-        name: "Carlos Rivera",
-        title: "Documentary Filmmaker",
-        company: "National Geographic",
-        avatar: "CR",
-        tags: ["Storytelling", "Wildlife Conservation", "Cinematography"],
-        interests: "Capturing untold stories of environmental conservation and social justice. Currently producing a series on ocean plastic pollution and indigenous land rights.",
-        color: "#3182ce"
-    },
-
-    dr_fatima_al_zahra: {
-        name: "Dr. Fatima Al-Zahra",
-        title: "Renewable Energy Engineer",
-        company: "Tesla Energy Division",
-        avatar: "FA",
-        tags: ["Solar Technology", "Grid Storage", "Sustainability"],
-        interests: "Advancing solar panel efficiency and grid-scale energy storage solutions. Advocate for renewable energy access in developing countries and women in STEM.",
-        color: "#d69e2e"
-    },
-
-    jonathan_mills: {
-        name: "Jonathan Mills",
-        title: "Executive Chef & Restaurateur",
-        company: "Michelin-Starred Restaurant Group",
-        avatar: "JM",
-        tags: ["Culinary Arts", "Sustainable Farming", "Hospitality"],
-        interests: "Revolutionizing farm-to-table dining and reducing food waste in restaurants. Passionate about culinary education and supporting local agriculture communities.",
-        color: "#c53030"
-    }
-
-};
+    // === SOFTWARE ENGINEERING & COMPUTER SCIENCE (3 profiles) ===
+    
+        maya_patel: {
+            name: "Maya Patel",
+            title: "Full-Stack Software Engineer",
+            company: "Meta Reality Labs",
+            avatar: "MP",
+            tags: ["React", "Node.js", "VR Development"],
+            interests: "Building immersive web experiences and AR/VR applications. Passionate about accessibility in virtual environments and mentoring women in tech.",
+            color: "#ff6b9d"
+        },
+    
+        alex_chen: {
+            name: "Alex Chen",
+            title: "Machine Learning Engineer",
+            company: "OpenAI Research",
+            avatar: "AC",
+            tags: ["Python", "TensorFlow", "Computer Vision"],
+            interests: "Developing ethical AI systems and exploring human-AI interaction. Currently working on multimodal AI models and their applications in education.",
+            color: "#4ecdc4"
+        },
+    
+        jordan_williams: {
+            name: "Jordan Williams",
+            title: "Mobile App Developer",
+            company: "Spotify",
+            avatar: "JW",
+            tags: ["Swift", "Kotlin", "UI/UX"],
+            interests: "Creating intuitive mobile experiences and music recommendation algorithms. Love discussing design patterns and cross-platform development strategies.",
+            color: "#45b7d1"
+        },
+        // === DIGITAL & VISUAL ARTS (3 profiles) ===
+    
+        kai_nakamura: {
+            name: "Kai Nakamura",
+            title: "Digital Artist & Animator",
+            company: "Pixar Animation Studios",
+            avatar: "KN",
+            tags: ["3D Animation", "Blender", "Storytelling"],
+            interests: "Creating emotionally compelling animated stories and exploring new animation techniques. Passionate about diversity in animation and mentoring aspiring artists.",
+            color: "#fd79a8"
+        },
+    
+        sophia_martinez: {
+            name: "Sophia Martinez",
+            title: "UX/UI Designer",
+            company: "Figma",
+            avatar: "SM",
+            tags: ["Design Systems", "Prototyping", "User Research"],
+            interests: "Designing inclusive digital experiences and building scalable design systems. Advocate for accessibility and human-centered design principles.",
+            color: "#6c5ce7"
+        },
+    
+        diego_santos: {
+            name: "Diego Santos",
+            title: "Creative Technologist",
+            company: "Google Arts & Culture",
+            avatar: "DS",
+            tags: ["Interactive Media", "AR Filters", "Creative Coding"],
+            interests: "Bridging art and technology through interactive installations and digital experiences. Exploring AI-generated art and cultural preservation through tech.",
+            color: "#a29bfe"
+        },
+    
+    
+        // === INTERDISCIPLINARY TECH FIELDS (3 profiles) ===
+    
+        dr_benjamin_clark: {
+            name: "Dr. Benjamin Clark",
+            title: "Computational Biologist",
+            company: "Harvard Medical School",
+            avatar: "BC",
+            tags: ["Bioinformatics", "Python", "Data Analysis"],
+            interests: "Using computational methods to understand biological systems and develop personalized medicine. Interested in AI applications in drug discovery.",
+            color: "#83a598"
+        },
+    
+        nisha_gupta: {
+            name: "Nisha Gupta",
+            title: "Data Scientist",
+            company: "Airbnb",
+            avatar: "NG",
+            tags: ["Machine Learning", "Statistics", "A/B Testing"],
+            interests: "Leveraging data to improve user experiences and business outcomes. Passionate about ethical AI and reducing algorithmic bias in recommendation systems.",
+            color: "#ff7675"
+        },
+    
+        aisha_okonkwo: {
+            name: "Aisha Okonkwo",
+            title: "Digital Health Researcher",
+            company: "Apple Health",
+            avatar: "AO",
+            tags: ["HealthKit", "Wearables", "Privacy"],
+            interests: "Improving healthcare accessibility through technology and wearable devices. Researching health equity and digital therapeutics for underserved communities.",
+            color: "#e17055"
+        },
+    
+    
+        // === BUSINESS & STRATEGY, ACADEMIA & RESEARCH (3 profiles) ===
+    
+        isabella_rossi: {
+            name: "Isabella Rossi",
+            title: "Product Manager",
+            company: "Slack",
+            avatar: "IR",
+            tags: ["Product Strategy", "Agile", "User Analytics"],
+            interests: "Building products that enhance team collaboration and productivity. Interested in the intersection of psychology and product design.",
+            color: "#fab1a0"
+        },
+    
+        james_thompson: {
+            name: "James Thompson",
+            title: "Tech Consultant",
+            company: "McKinsey Digital",
+            avatar: "JT",
+            tags: ["Digital Transformation", "Strategy", "Innovation"],
+            interests: "Helping companies navigate digital transformation and adopt emerging technologies. Focused on sustainable business models and social impact.",
+            color: "#74b9ff"
+        },
+    
+        prof_michael_adebayo: {
+            name: "Prof. Michael Adebayo",
+            title: "Computer Graphics Professor",
+            company: "Stanford University",
+            avatar: "MA",
+            tags: ["Computer Graphics", "Rendering", "Virtual Production"],
+            interests: "Advancing real-time rendering techniques and virtual production technologies. Collaborating with film studios on next-generation visual effects.",
+            color: "#fdcb6e"
+        },
+    
+        // === Other fields (8 profiles) ===
+    
+        dr_maria_gonzalez: {
+            name: "Dr. Maria Gonzalez",
+            title: "Pediatric Surgeon",
+            company: "Boston Children's Hospital",
+            avatar: "MG",
+            tags: ["Minimally Invasive Surgery", "Medical Innovation", "Patient Advocacy"],
+            interests: "Pioneering new surgical techniques for children and advocating for healthcare equity. Passionate about medical device design and training the next generation of surgeons.",
+            color: "#e53e3e"
+        },
+    
+        robert_johnson: {
+            name: "Robert Johnson",
+            title: "Investment Banking Director",
+            company: "Goldman Sachs",
+            avatar: "RJ",
+            tags: ["Mergers & Acquisitions", "Private Equity", "Financial Modeling"],
+            interests: "Structuring complex financial deals and helping companies scale globally. Interested in sustainable finance and ESG investing strategies.",
+            color: "#2d3748"
+        },
+    
+        lisa_chen: {
+            name: "Lisa Chen",
+            title: "Environmental Lawyer",
+            company: "Natural Resources Defense Council",
+            avatar: "LC",
+            tags: ["Climate Policy", "Environmental Law", "Renewable Energy"],
+            interests: "Fighting climate change through legal advocacy and policy reform. Focused on clean energy legislation and protecting endangered ecosystems.",
+            color: "#38a169"
+        },
+    
+        dr_ahmed_hassan: {
+            name: "Dr. Ahmed Hassan",
+            title: "Clinical Psychologist",
+            company: "Stanford Psychology Clinic",
+            avatar: "AH",
+            tags: ["Cognitive Behavioral Therapy", "Mental Health", "Research"],
+            interests: "Developing innovative therapies for anxiety and depression. Researching the intersection of technology and mental health treatment accessibility.",
+            color: "#805ad5"
+        },
+    
+        emily_baker: {
+            name: "Emily Baker",
+            title: "Architectural Designer",
+            company: "Foster + Partners",
+            avatar: "EB",
+            tags: ["Sustainable Design", "Urban Planning", "3D Modeling"],
+            interests: "Creating eco-friendly buildings and reimagining urban spaces for climate resilience. Passionate about biomimicry in architecture and community-centered design.",
+            color: "#dd6b20"
+        },
+    
+        carlos_rivera: {
+            name: "Carlos Rivera",
+            title: "Documentary Filmmaker",
+            company: "National Geographic",
+            avatar: "CR",
+            tags: ["Storytelling", "Wildlife Conservation", "Cinematography"],
+            interests: "Capturing untold stories of environmental conservation and social justice. Currently producing a series on ocean plastic pollution and indigenous land rights.",
+            color: "#3182ce"
+        },
+    
+        dr_fatima_al_zahra: {
+            name: "Dr. Fatima Al-Zahra",
+            title: "Renewable Energy Engineer",
+            company: "Tesla Energy Division",
+            avatar: "FA",
+            tags: ["Solar Technology", "Grid Storage", "Sustainability"],
+            interests: "Advancing solar panel efficiency and grid-scale energy storage solutions. Advocate for renewable energy access in developing countries and women in STEM.",
+            color: "#d69e2e"
+        },
+    
+        jonathan_mills: {
+            name: "Jonathan Mills",
+            title: "Executive Chef & Restaurateur",
+            company: "Michelin-Starred Restaurant Group",
+            avatar: "JM",
+            tags: ["Culinary Arts", "Sustainable Farming", "Hospitality"],
+            interests: "Revolutionizing farm-to-table dining and reducing food waste in restaurants. Passionate about culinary education and supporting local agriculture communities.",
+            color: "#c53030"
+        }
+    
+    };
 
 // Application state
 let stream = null;
@@ -461,7 +469,7 @@ function addTestProfile(id, profileData) {
         ...profileData,
         qrCode: id
     };
-    console.log(`Added profile: ${profileData.name} (QR: ${id})`);
+    console.log(`✅ Added profile: ${profileData.name} (QR: ${id})`);
 }
 
 // Prevent accidental navigation
@@ -502,7 +510,7 @@ function toggleDebug() {
 function testProfile() {
     // Test with the first profile for demonstration
     const testId = Object.keys(profiles)[0];
-    console.log(`Testing profile: ${testId}`);
+    console.log(`🧪 Testing profile: ${testId}`);
     handleQRDetection(testId);
     updateDebugPanel(`Manual test: ${testId}`);
     showNotification("Test profile displayed!", "success");
@@ -524,7 +532,7 @@ function updateDebugPanel(message = null) {
 
 // Main application startup
 async function startApp() {
-    console.log("Starting NetworkVision app...");
+    console.log("🚀 Starting NetworkVision app...");
     
     // Prevent navigation issues
     preventNavigation();
@@ -542,24 +550,29 @@ async function startApp() {
     }, 800);
 }
 
-// Camera initialization with better error handling
+// Camera initialization with VR optimization
 async function initializeCamera() {
     if (cameraInitialized) {
-        console.log("Camera already initialized");
+        console.log("📷 Camera already initialized");
         return;
     }
     
-    console.log("📷 Initializing camera...");
+    console.log("📷 Initializing camera for VR...");
     updateCameraStatus("Requesting...");
     
     try {
-        // More specific camera constraints for better stability
+        // VR-optimized camera constraints for Google Cardboard
         const constraints = {
             video: {
                 facingMode: { ideal: "environment" },
-                width: { ideal: 1280, min: 640, max: 1920 },
+                // Lower resolution for better performance in VR
+                width: { ideal: 1280, min: 720, max: 1920 },
                 height: { ideal: 720, min: 480, max: 1080 },
-                frameRate: { ideal: 24, min: 15, max: 30 } // Lower frame rate for stability
+                frameRate: { ideal: 30, min: 20, max: 30 }, // Consistent frame rate for VR
+                // Additional VR optimizations
+                aspectRatio: { ideal: 16/9 },
+                focusMode: { ideal: "continuous" },
+                whiteBalanceMode: { ideal: "continuous" }
             }
         };
 
@@ -568,16 +581,29 @@ async function initializeCamera() {
         const cameraLeft = document.getElementById("cameraLeft");
         const cameraRight = document.getElementById("cameraRight");
 
-        // Set up video streams
+        // Set up video streams with VR optimizations
         cameraLeft.srcObject = stream;
         cameraRight.srcObject = stream;
 
-        // Better event handling for video
+        // VR-specific video settings
+        [cameraLeft, cameraRight].forEach(video => {
+            video.setAttribute('playsinline', 'true');
+            video.setAttribute('webkit-playsinline', 'true');
+            video.muted = true;
+            video.autoplay = true;
+            // Reduce latency for VR
+            video.style.transform = 'translateZ(0)';
+            video.style.backfaceVisibility = 'hidden';
+        });
+
+        // Better event handling for video with VR considerations
         const videoReadyPromise = new Promise((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error("Video timeout")), 10000);
             
             cameraLeft.addEventListener('loadedmetadata', () => {
                 clearTimeout(timeout);
+                // VR calibration
+                console.log(`📹 VR Camera ready: ${cameraLeft.videoWidth}x${cameraLeft.videoHeight}`);
                 resolve();
             }, { once: true });
             
@@ -589,23 +615,22 @@ async function initializeCamera() {
 
         await videoReadyPromise;
 
-        console.log(`📹 Camera ready: ${cameraLeft.videoWidth}x${cameraLeft.videoHeight}`);
         updateCameraStatus("Active");
         updateScanStatus("Starting...");
         cameraInitialized = true;
         
-        // Start scanning after short delay
+        // Start scanning after calibration delay
         setTimeout(() => {
             startQRScanning();
-            showNotification("Camera activated successfully!", "success");
-        }, 1000);
+            showNotification("VR Camera activated!", "success");
+        }, 1500); // Longer delay for VR stabilization
 
     } catch (error) {
-        console.error("Camera access error:", error);
+        console.error("❌ VR Camera access error:", error);
         updateCameraStatus("Error");
         cameraInitialized = false;
         
-        let errorMessage = "Camera access failed. ";
+        let errorMessage = "VR Camera access failed. ";
         if (error.name === 'NotAllowedError') {
             errorMessage += "Please allow camera permissions and refresh.";
         } else if (error.name === 'NotFoundError') {
@@ -646,7 +671,7 @@ function stopQRScanning() {
     }
     isScanning = false;
     updateScanStatus("Stopped");
-    console.log("QR scanning stopped");
+    console.log("⏹️ QR scanning stopped");
 }
 
 function scanForQRCodes() {
@@ -675,7 +700,7 @@ function scanForQRCodes() {
         detectQRCode(imageData, canvas);
         
     } catch (error) {
-        console.error("Scanning error:", error);
+        console.error("❌ Scanning error:", error);
         updateDebugPanel(`Scan error: ${error.message}`);
     }
 }
@@ -688,7 +713,7 @@ function detectQRCode(imageData, canvas) {
         });
 
         if (code && code.data) {
-            console.log("jsQR detected:", code.data);
+            console.log("🎯 jsQR detected:", code.data);
             updateDebugPanel(`jsQR: ${code.data}`);
             
             // Store QR position for profile placement
@@ -714,7 +739,7 @@ function detectQRCode(imageData, canvas) {
             highlightCodeOutline: false
         })
         .then(result => {
-            console.log("QrScanner detected:", result.data);
+            console.log("🎯 QrScanner detected:", result.data);
             updateDebugPanel(`QrScanner: ${result.data}`);
             
             // Store approximate position (QrScanner doesn't provide exact coordinates)
@@ -754,7 +779,7 @@ function handleQRDetection(qrData) {
 
         // Check if profile exists and isn't already displayed
         if (profiles[profileId] && !currentProfiles.has(profileId)) {
-            console.log("Showing profile for:", profiles[profileId].name);
+            console.log("✅ Showing profile for:", profiles[profileId].name);
             
             // Display the profile
             showProfile(profiles[profileId]);
@@ -776,16 +801,16 @@ function handleQRDetection(qrData) {
             }, 8000);
 
         } else if (!profiles[profileId]) {
-            console.log("No profile found for ID:", profileId);
+            console.log("❌ No profile found for ID:", profileId);
             updateDebugPanel(`Unknown: ${profileId}`);
             showNoProfileMessage(profileId);
         } else {
-            console.log("Profile already displayed:", profileId);
+            console.log("ℹ️ Profile already displayed:", profileId);
             updateDebugPanel(`Already shown: ${profileId}`);
         }
 
     } catch (error) {
-        console.error("Error in handleQRDetection:", error);
+        console.error("❌ Error in handleQRDetection:", error);
         showNotification("Error processing QR code", "error");
     }
 }
@@ -845,7 +870,7 @@ function playDetectionSound() {
         oscillator.stop(audioContext.currentTime + 0.2);
         
     } catch (error) {
-        console.log("Audio feedback not available");
+        console.log("🔇 Audio feedback not available");
     }
 }
 
@@ -976,7 +1001,7 @@ function adjustColor(hex, percent) {
 
 // Error handling and user messages
 function showError(message) {
-    console.error("Error:", message);
+    console.error("❌ Error:", message);
     
     const errorDiv = document.createElement("div");
     errorDiv.className = "error-message";
@@ -1001,7 +1026,7 @@ function showError(message) {
 
 function showNoProfileMessage(profileId) {
     const message = `Profile not found: ${profileId}`;
-    console.log("Error", message);
+    console.log("❌", message);
     
     showNotification(message, "error");
     
@@ -1078,7 +1103,7 @@ function updateScanStatus(status) {
 
 // Device orientation and lifecycle management
 window.addEventListener("orientationchange", () => {
-    console.log("Orientation changed, reloading...");
+    console.log("📱 Orientation changed, reloading...");
     setTimeout(() => location.reload(), 500);
 });
 
@@ -1087,10 +1112,10 @@ async function requestWakeLock() {
     try {
         if ("wakeLock" in navigator) {
             wakeLock = await navigator.wakeLock.request("screen");
-            console.log("Screen wake lock acquired");
+            console.log("💡 Screen wake lock acquired");
         }
     } catch (err) {
-        console.log("Wake lock not available:", err);
+        console.log("💡 Wake lock not available:", err);
     }
 }
 
@@ -1151,20 +1176,20 @@ requestWakeLock();
 
 // Enhanced app initialization
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("NetworkVision DOM loaded");
+    console.log("🎯 NetworkVision DOM loaded");
     setupVideoErrorHandling();
     
     // Preload QR detection libraries
     if (typeof jsQR === 'undefined') {
-        console.log("jsQR library not loaded");
+        console.log("📚 jsQR library not loaded");
     } else {
-        console.log("jsQR library ready");
+        console.log("✅ jsQR library ready");
     }
     
     if (typeof QrScanner === 'undefined') {
-        console.log("QrScanner library not loaded");
+        console.log("📚 QrScanner library not loaded");
     } else {
-        console.log("QrScanner library ready");
+        console.log("✅ QrScanner library ready");
     }
 });
 
@@ -1174,7 +1199,7 @@ function startDemoMode() {
     const profileIds = Object.keys(profiles);
     let demoIndex = 0;
     
-    console.log("Starting demo mode...");
+    console.log("🎭 Starting demo mode...");
     setInterval(() => {
         if (demoIndex < profileIds.length) {
             // Simulate QR position for demo
@@ -1198,7 +1223,7 @@ function startDemoMode() {
 // setTimeout(startDemoMode, 3000);
 */
 
-console.log("NetworkVision app loaded successfully!");
-console.log("Available profiles:", Object.keys(profiles).join(", "));
-console.log("Ready to start networking!");
-console.log("VR-optimized for mobile experience");
+console.log("🎯 NetworkVision app loaded successfully!");
+console.log("📋 Available profiles:", Object.keys(profiles).join(", "));
+console.log("🚀 Ready to start networking!");
+console.log("📱 VR-optimized for mobile experience");
